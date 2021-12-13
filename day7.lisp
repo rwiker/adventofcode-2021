@@ -29,7 +29,7 @@
                 maximizing pos into max
                 minimizing pos into min
                 counting pos into count
-                finally return (values min max count))
+                finally (return (values min max count)))
         (values positions min max count)))))
 
 (defun day-7-1 (filename)
