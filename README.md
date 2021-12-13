@@ -1,7 +1,7 @@
-# aoc2021
-### _Your Name <your.name@example.com>_
+# adventofcode-2021
+### _Raymond Wiker <rwiker@gmail.com>_
 
-This is a project to do ... something.
+Code for Advent of Code 2021. Common Lisp; not necessarily pretty or canonical.
 
 ## License
 
