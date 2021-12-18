@@ -41,12 +41,9 @@
          'x-lo)
         ((> (xcur probe) (xmax probe))
          'x-hi)
-        ((and (< (ycur probe) (ymin probe))
-              (< (xcur probe) (xmin probe)))
-         'y-lo)
-        ((and (plusp (xcur probe))
+        ((and (minusp (yvel probe))
               (< (ycur probe) (ymin probe)))
-         'y-hi)
+         'y-lo)
         (t
          nil)))
 
@@ -102,7 +99,7 @@
           (best-vel nil))
       (loop for x-vel in (x-range probe) 
             do
-              (loop for y-vel from 1 below 500
+              (loop for y-vel from (ymin probe) upto 500
                     for sim-result = (simulate probe x-vel y-vel)
                     when (and (numberp sim-result)
                               (> sim-result max-height))
@@ -125,7 +122,7 @@
     (length 
      (loop for x-vel upto (xmax probe)
              nconc
-             (loop for y-vel from -500 upto 500
+             (loop for y-vel from (ymin probe) upto 500
                    for sim-result = (simulate probe x-vel y-vel)
                    when (numberp sim-result)
                      collect (list x-vel y-vel))))))
