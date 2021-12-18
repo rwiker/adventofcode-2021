@@ -10,7 +10,7 @@
 (defparameter *filename-18-0* (merge-pathnames "input-18-0.txt" (asdf:system-source-directory :aoc2021)))
 (defparameter *filename-18-1* (merge-pathnames "input-18-1.txt" (asdf:system-source-directory :aoc2021)))
 
-(defun parse-sailfish-number (string)
+(defun parse-sn (string)
   (with-input-from-string (s string)
     (labels ((digits-or-pair ()
                (if (digit-char-p (peek-char nil s))
@@ -31,16 +31,16 @@
       (parse-pair))))
 
 #||
-(parse-sailfish-number "[1,2]")
-(parse-sailfish-number "[[1,2],3]")
-(pprint (parse-sailfish-number "[[[[1,3],[5,3]],[[1,3],[8,7]]],[[[4,9],[6,9]],[[8,2],[7,3]]]]"))
+(parse-sn "[1,2]")
+(parse-sn "[[1,2],3]")
+(pprint (parse-sn "[[[[1,3],[5,3]],[[1,3],[8,7]]],[[[4,9],[6,9]],[[8,2],[7,3]]]]"))
 ||#
 
 (defun read-input (filename)
   (with-open-file (f filename)
     (loop for line = (read-line f nil)
           while line
-          collect (parse-sailfish-number line))))
+          collect (parse-sn line))))
 
 #||
 (read-input *filename-18-0*)
@@ -68,7 +68,7 @@
     (terpri stream)))
            
 
-(defun add-sailfish-numbers (a b)
+(defun add-sns (a b)
   (list a b))
 
 (defun inc-right (sn n)
@@ -129,14 +129,14 @@
     (and changed sn)))
 
 #||
-(max-depth (parse-sailfish-number "[[[[[9,8],1],2],3],4]"))
+(max-depth (parse-sn "[[[[[9,8],1],2],3],4]"))
 
 (list
- (explode-sn (parse-sailfish-number "[[[[[9,8],1],2],3],4]"))
- (explode-sn (parse-sailfish-number "[7,[6,[5,[4,[3,2]]]]]"))
- (explode-sn (parse-sailfish-number "[[6,[5,[4,[3,2]]]],1]"))
- (explode-sn (parse-sailfish-number "[[3,[2,[1,[7,3]]]],[6,[5,[4,[3,2]]]]]"))
- (explode-sn (parse-sailfish-number "[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]")))
+ (explode-sn (parse-sn "[[[[[9,8],1],2],3],4]"))
+ (explode-sn (parse-sn "[7,[6,[5,[4,[3,2]]]]]"))
+ (explode-sn (parse-sn "[[6,[5,[4,[3,2]]]],1]"))
+ (explode-sn (parse-sn "[[3,[2,[1,[7,3]]]],[6,[5,[4,[3,2]]]]]"))
+ (explode-sn (parse-sn "[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]")))
 ||#
 
 (defun split-sn/i (sn)
@@ -160,8 +160,8 @@
   (split-sn/i sn))
 
 #||
-(list (split-sn (parse-sailfish-number "[[[[0,7],4],[15,[0,13]]],[1,1]]"))
-      (split-sn (parse-sailfish-number "[[[[0,7],4],[[7,8],[0,13]]],[1,1]]")))
+(list (split-sn (parse-sn "[[[[0,7],4],[15,[0,13]]],[1,1]]"))
+      (split-sn (parse-sn "[[[[0,7],4],[[7,8],[0,13]]],[1,1]]")))
 ||#
 
 
@@ -194,11 +194,11 @@
 
 (explode-sn (split-sn (split-sn '((((5 11) (13 0)) ((15 14) (14 0))) ((2 (11 0)) ((10 8) (8 0)))))))
 
-(reduce-sn (parse-sailfish-number "[[[[15,0],[[15,8],[0,13]]],[[0,[6,6]],[[7,7],[0,9]]]],[12,[[0,[7,6]],[[7,6],[4,7]]]]]"))
+(reduce-sn (parse-sn "[[[[15,0],[[15,8],[0,13]]],[[0,[6,6]],[[7,7],[0,9]]]],[12,[[0,[7,6]],[[7,6],[4,7]]]]]"))
 
-(let ((sn-1 (parse-sailfish-number "[[[[4,3],4],4],[7,[[8,4],9]]]"))
-      (sn-2 (parse-sailfish-number "[1,1]")))
-  (let ((sn-3 (add-sailfish-numbers sn-1 sn-2)))
+(let ((sn-1 (parse-sn "[[[[4,3],4],4],[7,[[8,4],9]]]"))
+      (sn-2 (parse-sn "[1,1]")))
+  (let ((sn-3 (add-sns sn-1 sn-2)))
     (reduce-sn sn-3)))
 ||#
 
@@ -209,15 +209,15 @@
        (* 2 (magnitude-sn (second sn))))))
 
 #||
-(assert (= (magnitude-sn (parse-sailfish-number "[[1,2],[[3,4],5]]")) 143))
-(assert (= (magnitude-sn (parse-sailfish-number "[[[[8,7],[7,7]],[[8,6],[7,7]]],[[[0,7],[6,6]],[8,7]]]")) 3488))
+(assert (= (magnitude-sn (parse-sn "[[1,2],[[3,4],5]]")) 143))
+(assert (= (magnitude-sn (parse-sn "[[[[8,7],[7,7]],[[8,6],[7,7]]],[[[0,7],[6,6]],[8,7]]]")) 3488))
 ||#
 
 (defun  day-18-1 (filename)
   (let ((numbers (read-input filename)))
     (let ((sum (first numbers)))
       (dolist (num (rest numbers))
-        (setf sum (add-sailfish-numbers sum num))
+        (setf sum (add-sns sum num))
         (setf sum (reduce-sn sum)))
       (magnitude-sn sum))))
 
@@ -241,9 +241,9 @@
                                         0
                                         (magnitude-sn
                                          (reduce-sn
-                                          (add-sailfish-numbers
-                                           (parse-sailfish-number a)
-                                           (parse-sailfish-number b)))))))))
+                                          (add-sns
+                                           (parse-sn a)
+                                           (parse-sn b)))))))))
 
 
 #||
