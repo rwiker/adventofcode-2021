@@ -24,7 +24,7 @@
         pos
       (format stream "~d,~d,~d" x y z))))
 
-(defun pos (pos)
+(defun pos-pos (pos)
   (with-slots (x y z)
       pos
     (list x y z)))
@@ -58,6 +58,8 @@
 
 (defclass scanner ()
   ((id :accessor id :initarg :id)
+   (origin :accessor origin :initform nil)
+   (permutator :accessor permutator :initform nil)
    (beacons :accessor beacons :initarg :beacons)))
 
 (defun make-scanner (id beacons)
@@ -65,7 +67,7 @@
 
 (defmethod print-object ((scanner scanner) stream)
   (print-unreadable-object (scanner stream :type t)
-    (format stream "~d" (id scanner))))
+    (format stream "~d: ~a" (id scanner) (origin scanner))))
 
 (defun read-input (filename)
   (with-open-file (f filename)
@@ -130,107 +132,52 @@
     ((- z) x y)
     ((- z) x (- y))
     ((- z) (- x) y)
-    ((- z) (- x) (- y))
+    ((- z) (- x) (- y))))
 
+(defun negate-form (form)
+  (cond ((symbolp form)
+         (list '- form))
+        ((and (listp form)
+              (eq (first form) '-)
+              (symbolp (second form)))
+         (second form))
+        (t
+         (error "Invalid form: ~a" form))))
 
-    ;; additional
-    ((- y) (- z) x)
-    ((- y) z (- x))
-    (y (- z) (- x))
-    (y z x)
-    
-#||    
-    ((- y) z (- x))
-    (y z x)
-    (x (- z) (- y))
+(defun rotate-form/x (form)
+  (destructuring-bind (x y z)
+      form
+    (list x (negate-form z) y)))
+
+(defun rotate-form/y (form)
+  (destructuring-bind (x y z)
+      form
+    (list z y (negate-form x))))
+
+(defun rotate-form/z (form)
+  (destructuring-bind (x y z)
+      form
+    (list (negate-form y) x z)))
+
+#||
+(rotate-form/x (rotate-form/x (rotate-form/x (rotate-form/x '(x y z)))))
 ||#
 
-    ))
-
-#+nil
+(defun create-permutations ()
+  (let ((initial (list 'x 'y 'z))
+        (permutations (make-hash-table :test 'equal)))
+    (labels ((recurse (form)
+               (unless (gethash form permutations)
+                 (setf (gethash form permutations) t)
+                 (recurse (rotate-form/x form))
+                 (recurse (rotate-form/y form))
+                 (recurse (rotate-form/z form)))))
+      (recurse initial)
+      (loop for k being the hash-keys of permutations
+              collect k))))
+                 
 (defparameter *permutations*
-  '((x y z)
-    (x y (- z))
-    (x (- y) z)
-    (x (- y) (- z))
-    
-    ((- x) z y)
-    ((- x) (- z) y)
-    ((- x) z (- y))
-    ((- x) (- z) (- y))
-    
-    (y x z)
-    (y x (- z))
-    (y (- x) z)
-    (y (- x) (- z))
-
-    ((- y) z x)
-    ((- y) (- z) x)
-    ((- y) z (- x))
-    ((- y) (- z) (- x))
-
-    (z x y)
-    (z x (- y))
-    (z (- x) y)
-    (z (- x) (- y))
-
-    ((- z) y x)
-    ((- z) (- y) x)
-    ((- z) y (- x))
-    ((- z) (- y) (- x))))
-
-#+nil
-(defparameter *permutations*
-  '((x y z)
-    (x z (- y))
-    (x (- y) (- z))
-    (x (- z) y)
-
-    ((- x) y z)
-    ((- x) z (- y))
-    ((- x) (- y) (- z))
-    ((- x) (- z) y)
-
-    (y x z)
-    (y z (- x))
-    (y (- x) (- z))
-    (y (- z) x)
-
-    ((- y) x z)
-    ((- y) z (- x))
-    ((- y) (- x) (- z))
-    ((- y) (- z) x)
-
-    (z x y)
-    (z y (- x))
-    (z (- x) (- y))
-    (z (- y) x)
-
-    ((- z) x y)
-    ((- z) y (- x))
-    ((- z) (- x) (- y))
-    ((- z) (- y) x)))
-
-#-nil
-(defparameter *permutations*
-  (let ((basic-permutations '((x y z)
-                              (x z y)
-                              (y x z)
-                              (y z x)
-                              (z x y)
-                              (z y x))))
-    (loop for (x y z) in basic-permutations
-          nconc (loop for ix below 8
-                      collect (list (if (zerop (logand ix 4))
-                                      x
-                                      (list '- x))
-                                    (if (zerop (logand ix 2))
-                                      y
-                                      (list '- y))
-                                    (if (zerop (logand ix 1))
-                                      z
-                                      (list '- z)))))))
-
+  (create-permutations))
 
 (defun make-permutator-form (index)
   ;; (assert (and (integerp index) (<= 0 index 23)))
@@ -275,175 +222,76 @@
     (loop for beacon-2 in (beacons scanner-2)
           for beacon-2/permuted = (funcall permutator beacon-2)
           do (loop for beacon-1 in (beacons scanner-1)
-                   for diff = (pos-diff beacon-1 beacon-2/permuted)
-                     do (incf (gethash diff diffs 0))))
+                   for diff = (pos- beacon-1 beacon-2/permuted)
+                   do (incf (gethash (pos-pos diff) diffs 0))))
     (let ((max 0)
           (diff nil))
       (loop for v being the hash-value of diffs
               using (hash-key k)
-              when (> v max)
-                do (setf max v
-                         diff k))
-      (list max (apply 'make-pos diff)))))
-
-#+nil
-(defun match-scanners-with-permutator (scanner-1 scanner-2 permutator)
-  (let ((diffs (make-hash-table :test 'equal)))
-    (loop for beacon-1 in (beacons scanner-1)
-            do (loop for beacon-2 in (beacons scanner-2)
-                       for diff = (pos-diff (funcall permutator beacon-1) beacon-2)
-                       do (incf (gethash diff diffs 0))))
-    (let ((max 0)
-          (diff nil))
-      (loop for v being the hash-value of diffs
-              using (hash-key k)
-              when (> v max)
-                do (setf max v
-                         diff k))
+            when (> v max)
+              do (setf max v
+                       diff k))
       (list max (apply 'make-pos diff)))))
 
 (defun match-scanners (scanner-1 scanner-2)
   (loop for permutator across *permutators*
-          for permutation in *permutations*
-          for i from 0
-          for (matches diff) = (match-scanners-with-permutator scanner-1 scanner-2 permutator)
-          when (>= matches 12)
-          collect (list scanner-1 scanner-2 permutator diff i permutation)))
+        for i from 0
+        for (matches offset) = (match-scanners-with-permutator scanner-1 scanner-2 permutator)
+        when (>= matches 12)
+          do (progn
+               (setf (origin scanner-2) offset)
+               (setf (beacons scanner-2)
+                     (mapcar (lambda (b)
+                               (pos+ offset (funcall permutator b)))
+                             (beacons scanner-2))))
+        until (>= matches 12)
+        finally (return (>= matches 12))))
 
 (defun match-all-scanners (scanners)
-  (loop for scanner-1 in scanners
-        nconc (loop for scanner-2 in scanners
-                    unless (eq scanner-1 scanner-2)
-                      nconc (match-scanners scanner-1 scanner-2))))
-
-#+nil
-(defun match-all-scanners (scanners)
-  (let ((queue (list (first scanners)))
-        (scanners-seen (make-hash-table :test 'eq))
-        (scanner-chain nil))
+  (let ((scanner-0 (find 0 scanners :key 'id :test '=))
+        (queue))
+    (setf (origin scanner-0) (make-pos 0 0 0))
+    (setf (permutator scanner-0) 'identity)
+    (push scanner-0 queue)
     (loop for scanner-1 = (pop queue)
           while scanner-1
-          do (unless (gethash scanner-1 scanners-seen)
-               (setf (gethash scanner-1 scanners-seen) t)
-               (loop for scanner-2 in scanners
-                     unless (gethash scanner-2 scanners-seen)
-                       do (let ((match-data (match-scanners scanner-1 scanner-2)))
-                            (when match-data
-                              (assert (= (length match-data) 1))
-                              (destructuring-bind (sc-1 sc-2 permutator diff i permutation)
-                                  (first match-data)
-                                (declare (ignore sc-1 permutator diff i permutation))
-                                (push (first match-data) scanner-chain)
-                                (unless (gethash sc-2 scanners-seen)
-                                  (push sc-2 queue))))))))
-    scanner-chain))
-                              
-                          
-    
+          do (loop for scanner-2 in scanners
+                   for matched = (unless
+                                     (or (not (null (origin scanner-2)))
+                                         (eq scanner-1 scanner-2))
+                                   (match-scanners scanner-1 scanner-2))
+                   when matched
+                     do (push scanner-2 queue)))
+    scanners))
 
-#||
-(match-scanners (first *scanners*) (second *scanners*))
-(length (match-all-scanners *scanners*))
-(length (remove-if-not (lambda (x) (>= x 12))
-                       (match-all-scanners *scanners*)))
-
-(match-scanners (second *scanners*) (fifth *scanners*))
-(match-scanners (fifth *scanners*) (second *scanners*))
-
-(defparameter *foo*
-  (match-scanners (first *scanners*) (second *scanners*)))
-(beacons (second *scanners*))
-
-(nth 21 *permutations*)
-
-(defparameter *scanner-chain*
-  (match-all-scanners *scanners*))
-
-(reduce '+ (mapcar 'length (mapcar 'beacons *scanners*)))
-
-(loop for (src dst perm diff perm-id perm-exp) in *scanner-chain*
-        do (format t "~&~d -> ~d; perm = ~d: ~a~%"
-                   (id src) (id dst) perm-id perm-exp))
-
-(destructuring-bind (s-1 s-2 perm diff perm-id perm-expr)
-    (first *scanner-chain*)
-  (let ((munge (lambda (b) (pos+ (funcall perm b) diff))))
-    (format t "~&~{~a~%~}~%" (sort (copy-seq (beacons s-1)) 'pos<))
-    (format t "~&***~%")
-    (format t "~&~{~a~%~}~%" (sort (mapcar munge (beacons s-2)) 'pos<))))
-
-
-||#
-
-(defun count-beacons (scanner-chain)
-  (let ((scanners-seen (make-hash-table :test 'eq))
-        (beacons-seen (make-hash-table :test 'equal)))
-    (labels ((munge-all (beacon mungers)
-               (loop for b = beacon then munged-b
-                     for munger in mungers
-                     for munged-b = (funcall munger b)
-                     finally (return b)))
-             (record-points (beacons mungers)
-               (loop for beacon in beacons
-                     for point = (pos (munge-all beacon mungers))
-                     do (setf (gethash point beacons-seen) t)))
-             (process-scanner (scanner mungers)
-               (setf (gethash scanner scanners-seen) t)
-               (format t "~&Scanner: ~a~%" (id scanner))
-               (record-points (beacons scanner) mungers)
-               (loop for (nil next-scanner permutator diff) in (remove-if-not (lambda (ch)
-                                                                           (eq (first ch) scanner))
-                                                                         scanner-chain)
-                     for munger = (lambda (pos)
-                                    (pos+ (funcall permutator pos) diff))
-                     unless (gethash next-scanner scanners-seen)
-                     do (process-scanner next-scanner (cons munger mungers)))))
-      (process-scanner (first (first scanner-chain)) (list 'identity))
-      (hash-table-count beacons-seen))))
-
-#||
-(loop for (dst src nil) in *scanner-chain*
-      do (format t "~&~a - > ~d~%" (id src) (id dst)))
-
-(loop for (src dst perm diff) in *scanner-chain*
-        do (format t "~d -> ~d: ~a~%" (id src) (id dst)
-                   (funcall perm (pos- (make-pos 0 0 0) diff))))
-
-(count-beacons *scanner-chain*)
-||#
 
 (defun day-19-1 (filename)
   (let ((scanners (read-input filename)))
-    (let ((scanner-chain (match-all-scanners scanners)))
-      (count-beacons scanner-chain))))
+    (match-all-scanners scanners)
+    (let ((map (make-hash-table :test 'equal)))
+      (loop for scanner in scanners
+              do (loop for beacon in (beacons scanner)
+                       do (setf (gethash (pos-pos beacon) map) t)))
+      (hash-table-count map))))
 
 #||
 (assert (= (day-19-1 *filename-19-0*) 79))
 (day-19-1 *filename-19-1*)
 ||#
 
+(defun manhattan-distance (a b)
+  (let ((diff (pos- a b)))
+    (reduce '+ (mapcar 'abs (pos-pos diff)))))
+  
 
 (defun day-19-2 (filename)
   (let ((scanners (read-input filename)))
-    (let ((scanner-chain (match-all-scanners scanners)))
-      (let ((scanner-positions (make-hash-table :test 'eq)))
-        (labels ((process-scanner (scanner ref-pos permutator perm-desc)
-                   (format t "~&Scanner ~d, ref-pos ~a, perm ~a~%" (id scanner) ref-pos perm-desc)
-                   (setf (gethash scanner scanner-positions) ref-pos)
-                   (loop for (nil next-scanner next-permutator diff perm-id perm-desc)
-                           in (remove-if-not (lambda (ch)
-                                               (eq (first ch) scanner))
-                                             scanner-chain)
-                         unless (gethash next-scanner scanner-positions)
-                           do (let ((next-pos (pos- ref-pos (funcall next-permutator diff))))
-                                (format t "~&ref-pos: ~a; diff: ~a; permuted next-pos: ~a; perm: ~a~%"
-                                        ref-pos diff next-pos permutator)
-                                (process-scanner next-scanner next-pos next-permutator perm-desc)))))
-          (destructuring-bind (scanner-1 scanner-2 permutator diff perm-id perm-desc)
-              (first scanner-chain)
-            (process-scanner scanner-1 (make-pos 0 0 0) permutator perm-desc))
-          (break))))))
+    (match-all-scanners scanners)
+    (loop for scanner-1 in scanners
+            maximizing (loop for scanner-2 in scanners
+                               maximizing (manhattan-distance (origin scanner-1) (origin scanner-2))))))
 
 #||
-(day-19-2 *filename-19-0*)
+(assert (= (day-19-2 *filename-19-0*) 3621))
+(day-19-2 *filename-19-1*)
 ||#
